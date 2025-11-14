@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>私のGitHub Pagesへようこそ</title>
+    <style>
+        /* 簡単なスタイルを追加 */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f4f4f4;
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #0366d6; /* GitHubの青っぽい色 */
+        }
+        p {
+            line-height: 1.6;
+        }
+        .github-link {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #24292e; /* GitHubのダークな色 */
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+        .github-link:hover {
+            background-color: #444d56;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 GitHub Pagesで公開しました！</h1>
+        <p>
+            これは私の初めてのホームページです。
+            このファイル（`index.html`）をGitHubのリポジトリにアップロードすることで、
+            誰でもこのページを見ることができます。
+        </p>
+        <p>
+            このテキストを自分の好きな内容に編集してみましょう！
+        </p>
+        
+        <a href="https://github.com/あなたのユーザー名" class="github-link" target="_blank">
+            私のGitHubプロフィールを見る
+        </a>
+    </div>
+</body>
+</html>
