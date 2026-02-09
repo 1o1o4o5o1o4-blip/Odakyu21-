@@ -2,62 +2,68 @@ import streamlit as st
 import requests
 
 # ページの設定
-st.set_page_config(page_title="過疎スタ最強検索", page_icon="🔥", layout="wide")
-st.title("🔥 過疎スタ・絶対に動く検索アプリ")
+st.set_page_config(page_title="過疎スタ・サーチ", page_icon="🔍")
+st.title("🔍 過疎スタ・ベスト検索")
 
-# --- 1. データの読み込み（2段構え！） ---
+# 1. データの読み込み（一番成功率が高い順に試す！）
 @st.cache_data(ttl=60)
-def get_safe_data():
-    # 1番目の作戦：今の本物の過疎スタから取る
-    url1 = "https://api.scratch.mit.edu/studios/51326987/comments?limit=40"
-    # 2番目の作戦：もしダメならGitHubのバックアップから取る（君が最初に教えてくれたやつ！）
-    url2 = "https://raw.githubusercontent.com/hd3a/kasosuta-dataset/refs/heads/main/scratch_shinya_all.json"
+def load_kasosuta():
+    # A案: 本物のScratch API
+    api_url = "https://api.scratch.mit.edu/studios/51326987/comments?limit=40"
+    # B案: 君が教えてくれたGitHubのバックアップデータ
+    backup_url = "https://raw.githubusercontent.com/hd3a/kasosuta-dataset/refs/heads/main/scratch_shinya_all.json"
     
     headers = {"User-Agent": "Mozilla/5.0"}
 
-    # まず1番目を試す
+    # まず本物を試す
     try:
-        r = requests.get(url1, headers=headers, timeout=5)
-        if r.status_code == 200:
-            return r.json(), "最新の過疎スタ"
+        res = requests.get(api_url, headers=headers, timeout=5)
+        if res.status_code == 200:
+            return res.json(), "最新（Scratch直結）"
     except:
         pass
 
-    # 1番目がダメなら2番目を試す
+    # ダメならバックアップを試す
     try:
-        r = requests.get(url2, timeout=5)
-        if r.status_code == 200:
-            return r.json(), "バックアップ（過去ログ）"
+        res = requests.get(backup_url, timeout=5)
+        if res.status_code == 200:
+            return res.json(), "保存データ（GitHub経由）"
     except:
         pass
-        
+
     return None, None
 
-# --- 2. 実行 ---
-data, mode = get_safe_data()
+# 2. 実行
+data, mode = load_kasosuta()
 
 if data is None:
-    st.error("😭 全ての接続に失敗しました。requirements.txt を確認してください！")
+    st.error("😫 どうしてもデータが取れませんでした。")
+    st.info("requirements.txt に『requests』と書いて保存してあるか確認してね！")
 else:
-    st.success(f"✅ {mode} からデータを読み込みました！")
+    st.success(f"✅ {mode} モードで作動中！")
     
     # 検索機能
-    st.sidebar.title("🔍 検索メニュー")
-    q = st.sidebar.text_input("名前や言葉を入れてね")
+    query = st.text_input("👤 ユーザー名や 💬 言葉で検索してね")
 
-    # --- 3. 表示（データの形が違っても動くように調整） ---
+    # 3. 表示（どんなデータの形でも対応する魔法）
+    count = 0
     for c in data:
-        # 本物データとバックアップデータの両方に対応する書き方
+        # ユーザー名を探す
         user = "不明"
         if isinstance(c.get('author'), dict):
             user = c['author'].get('username', '不明')
         else:
             user = c.get('user', '不明')
-            
+        
+        # 内容を探す
         content = c.get('content', '')
 
-        if q.lower() in user.lower() or q.lower() in content.lower():
-            with st.container():
-                st.markdown(f"👤 **{user}**")
-                st.info(content)
-                st.divider()
+        # 検索にヒットするかチェック
+        if query.lower() in user.lower() or query.lower() in content.lower():
+            count += 1
+            with st.chat_message("user"):
+                st.write(f"**{user}**")
+                st.write(content)
+
+    if count == 0:
+        st.warning("見つかりませんでした。")
