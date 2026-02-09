@@ -1,0 +1,62 @@
+import streamlit as st
+import requests
+import time
+
+# 1. データの読み込み（おまじないを追加！）
+@st.cache_data(ttl=300)
+def load_all_comments():
+    all_comments = []
+    # Scratchに「怪しいものじゃないよ」と伝えるための設定
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+
+    # ページ数を少し減らして（5ページ＝200件）まずは確実に動かそう
+    for page in range(5):
+        offset = page * 40
+        url = f"https://api.scratch.mit.edu/studios/51326987/comments?offset={offset}&limit=40"
+        
+        try:
+            r = requests.get(url, headers=headers) # ここでおまじないを渡す
+            if r.status_code != 200:
+                break
+            
+            data = r.json()
+            if not data or len(data) == 0:
+                break
+                
+            for c in data:
+                all_comments.append({
+                    "id": c.get("id"),
+                    "user": c.get("author", {}).get("username", "不明"),
+                    "datetime": c.get("datetime_created", ""),
+                    "content": c.get("content", ""),
+                })
+            time.sleep(0.2) # 少しゆっくりめにアクセス
+            
+        except:
+            break
+            
+    return all_comments
+
+# --- 以下は表示の部分 ---
+st.title("過疎スタ リアルタイム検索")
+
+# 実行
+comments_list = load_all_comments()
+
+if not comments_list:
+    st.error("Scratchからデータを取れませんでした。少し時間を置いてから『Rキー』を押して更新してみてね。")
+else:
+    # 検索機能
+    user_q = st.sidebar.text_input("ユーザー名で検索")
+    text_q = st.sidebar.text_input("キーワードで検索")
+
+    results = [c for c in comments_list if user_q.lower() in c["user"].lower() and text_q.lower() in c["content"].lower()]
+
+    st.write(f"### 取得した {len(comments_list)} 件中、{len(results)} 件がヒット！")
+
+    for c in results:
+        st.markdown(f"**{c['user']}** `{c['datetime']}`")
+        st.write(c["content"])
+        st.divider()
