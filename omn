@@ -1,46 +1,41 @@
 import streamlit as st
 import requests
-import json
 
-st.set_page_config(page_title="過疎スタ診断", layout="wide")
-st.title("🛡️ 過疎スタ 接続テスト")
+# 画面の設定
+st.set_page_config(page_title="過疎スタ検索", page_icon="🔍")
+st.title("🔍 過疎スタ 検索アプリ")
 
-# 1. 設定：Scratchに「人間だよ」と伝えるための名札
-url = "https://api.scratch.mit.edu/studios/51326987/comments?offset=0&limit=40"
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-}
+# 1. データの読み込み
+# エラーが起きてもアプリが止まらないように「try」を使うよ
+@st.cache_data(ttl=60)
+def get_data():
+    url = "https://api.scratch.mit.edu/studios/51326987/comments?limit=40"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    try:
+        r = requests.get(url, headers=headers, timeout=10)
+        return r.json()
+    except:
+        return None
 
-st.write("🔄 Scratchのサーバーに接続中...")
+# 2. 実行
+data = get_data()
 
-# 2. 接続開始（エラーを隠さずに全部表示するモード）
-try:
-    response = requests.get(url, headers=headers, timeout=10)
+if data is None:
+    st.error("Scratchのデータが取れませんでした。リロードしてみてね。")
+    # もし requirements.txt がないと、ここで「requestsが無いよ」というエラーがログに出るよ
+else:
+    st.success(f"最新の {len(data)} 件を表示中！")
     
-    # 状態コードを表示（200なら成功、403なら拒否、404なら無し）
-    st.metric(label="通信ステータス", value=response.status_code)
+    # 検索バー
+    q = st.sidebar.text_input("キーワード検索")
     
-    if response.status_code == 200:
-        data = response.json()
-        st.success(f"✅ 成功！ {len(data)} 件のデータを取得しました。")
+    # 3. 表示
+    for c in data:
+        user = c.get('author', {}).get('username', '???')
+        content = c.get('content', '')
         
-        # データの表示
-        for c in data:
-            try:
-                username = c['author']['username']
-                content = c['content']
-                st.info(f"👤 **{username}**: {content}")
-            except:
-                st.warning("⚠️ データの形が少し変ですが、読み込みました")
-                st.json(c) # 変なデータの中身を見せる
-                
-    else:
-        st.error(f"❌ エラーが発生しました。ステータスコード: {response.status_code}")
-        st.write("▼ Scratchからの返事（エラー内容）:")
-        st.code(response.text)
-
-except Exception as e:
-    st.error("💥 重大なエラーが発生しました")
-    st.write("▼ エラーの詳細:")
-    st.code(str(e))
-    st.write("ヒント: requirements.txt は作りましたか？")
+        # 検索ワードが入っているかチェック
+        if q.lower() in content.lower() or q.lower() in user.lower():
+            st.markdown(f"**{user}**")
+            st.write(content)
+            st.divider()
