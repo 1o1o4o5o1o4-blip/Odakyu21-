@@ -1,0 +1,83 @@
+import streamlit as st
+import requests
+import time
+
+# ページの設定（広く見やすくしたよ！）
+st.set_page_config(page_title="過疎スタ 限界突破検索", layout="wide")
+st.title("🚀 過疎スタ 限界突破検索アプリ")
+
+# --- 1. データを「超たくさん」取るための関数 ---
+@st.cache_data(ttl=300) # 5分間は保存して速く動くようにする
+def get_huge_data():
+    all_comments = []
+    # 「15ページ分」さかのぼる（40件 × 15 = 最大600件！）
+    # これ以上増やすと時間がかかりすぎるから、まずはここが限界！
+    max_pages = 15 
+    
+    progress_bar = st.progress(0) # 読み込みゲージを表示
+    status_text = st.empty()
+
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+
+    for page in range(max_pages):
+        offset = page * 40
+        url = f"https://api.scratch.mit.edu/studios/51326987/comments?offset={offset}&limit=40"
+        
+        status_text.text(f"📥 データを読み込み中... ({page+1}/{max_pages} ページ目)")
+        progress_bar.progress((page + 1) / max_pages)
+
+        try:
+            r = requests.get(url, headers=headers, timeout=10)
+            if r.status_code != 200:
+                break
+            
+            data = r.json()
+            if not data or len(data) == 0:
+                break
+                
+            for c in data:
+                all_comments.append({
+                    "user": c.get('author', {}).get('username', '不明'),
+                    "content": c.get('content', ''),
+                    "time": c.get('datetime_created', '')
+                })
+            
+            # Scratchのサーバーをパンクさせないための休憩（これ大事！）
+            time.sleep(0.1)
+            
+        except Exception as e:
+            st.warning(f"途中でエラーが起きました: {e}")
+            break
+            
+    status_text.empty()
+    progress_bar.empty()
+    return all_comments
+
+# --- 2. 実行 ---
+with st.spinner("過疎スタの深くまで潜っています..."):
+    data_list = get_huge_data()
+
+if not data_list:
+    st.error("データが取れませんでした。requirements.txt を確認してね！")
+else:
+    # サイドバーに検索機能
+    st.sidebar.header("🔍 絞り込み検索")
+    q_user = st.sidebar.text_input("ユーザー名で探す")
+    q_text = st.sidebar.text_input("言葉で探す")
+
+    # 検索処理
+    results = [
+        c for c in data_list 
+        if q_user.lower() in c['user'].lower() and q_text.lower() in c['content'].lower()
+    ]
+
+    # 表示
+    st.write(f"### 📋 合計 {len(data_list)} 件取得しました（ヒット: {len(results)} 件）")
+    
+    # 1件ずつカード形式で表示
+    for c in results:
+        with st.expander(f"👤 {c['user']}  |  {c['time']}"):
+            st.write(c['content'])
+
+st.divider()
+st.caption("たくさん取れるようになったよ！")
