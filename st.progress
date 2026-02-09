@@ -1,83 +1,63 @@
 import streamlit as st
 import requests
-import time
 
-# ページの設定（広く見やすくしたよ！）
-st.set_page_config(page_title="過疎スタ 限界突破検索", layout="wide")
-st.title("🚀 過疎スタ 限界突破検索アプリ")
+# ページの設定
+st.set_page_config(page_title="過疎スタ最強検索", page_icon="🔥", layout="wide")
+st.title("🔥 過疎スタ・絶対に動く検索アプリ")
 
-# --- 1. データを「超たくさん」取るための関数 ---
-@st.cache_data(ttl=300) # 5分間は保存して速く動くようにする
-def get_huge_data():
-    all_comments = []
-    # 「15ページ分」さかのぼる（40件 × 15 = 最大600件！）
-    # これ以上増やすと時間がかかりすぎるから、まずはここが限界！
-    max_pages = 15 
+# --- 1. データの読み込み（2段構え！） ---
+@st.cache_data(ttl=60)
+def get_safe_data():
+    # 1番目の作戦：今の本物の過疎スタから取る
+    url1 = "https://api.scratch.mit.edu/studios/51326987/comments?limit=40"
+    # 2番目の作戦：もしダメならGitHubのバックアップから取る（君が最初に教えてくれたやつ！）
+    url2 = "https://raw.githubusercontent.com/hd3a/kasosuta-dataset/refs/heads/main/scratch_shinya_all.json"
     
-    progress_bar = st.progress(0) # 読み込みゲージを表示
-    status_text = st.empty()
+    headers = {"User-Agent": "Mozilla/5.0"}
 
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    # まず1番目を試す
+    try:
+        r = requests.get(url1, headers=headers, timeout=5)
+        if r.status_code == 200:
+            return r.json(), "最新の過疎スタ"
+    except:
+        pass
 
-    for page in range(max_pages):
-        offset = page * 40
-        url = f"https://api.scratch.mit.edu/studios/51326987/comments?offset={offset}&limit=40"
+    # 1番目がダメなら2番目を試す
+    try:
+        r = requests.get(url2, timeout=5)
+        if r.status_code == 200:
+            return r.json(), "バックアップ（過去ログ）"
+    except:
+        pass
         
-        status_text.text(f"📥 データを読み込み中... ({page+1}/{max_pages} ページ目)")
-        progress_bar.progress((page + 1) / max_pages)
-
-        try:
-            r = requests.get(url, headers=headers, timeout=10)
-            if r.status_code != 200:
-                break
-            
-            data = r.json()
-            if not data or len(data) == 0:
-                break
-                
-            for c in data:
-                all_comments.append({
-                    "user": c.get('author', {}).get('username', '不明'),
-                    "content": c.get('content', ''),
-                    "time": c.get('datetime_created', '')
-                })
-            
-            # Scratchのサーバーをパンクさせないための休憩（これ大事！）
-            time.sleep(0.1)
-            
-        except Exception as e:
-            st.warning(f"途中でエラーが起きました: {e}")
-            break
-            
-    status_text.empty()
-    progress_bar.empty()
-    return all_comments
+    return None, None
 
 # --- 2. 実行 ---
-with st.spinner("過疎スタの深くまで潜っています..."):
-    data_list = get_huge_data()
+data, mode = get_safe_data()
 
-if not data_list:
-    st.error("データが取れませんでした。requirements.txt を確認してね！")
+if data is None:
+    st.error("😭 全ての接続に失敗しました。requirements.txt を確認してください！")
 else:
-    # サイドバーに検索機能
-    st.sidebar.header("🔍 絞り込み検索")
-    q_user = st.sidebar.text_input("ユーザー名で探す")
-    q_text = st.sidebar.text_input("言葉で探す")
-
-    # 検索処理
-    results = [
-        c for c in data_list 
-        if q_user.lower() in c['user'].lower() and q_text.lower() in c['content'].lower()
-    ]
-
-    # 表示
-    st.write(f"### 📋 合計 {len(data_list)} 件取得しました（ヒット: {len(results)} 件）")
+    st.success(f"✅ {mode} からデータを読み込みました！")
     
-    # 1件ずつカード形式で表示
-    for c in results:
-        with st.expander(f"👤 {c['user']}  |  {c['time']}"):
-            st.write(c['content'])
+    # 検索機能
+    st.sidebar.title("🔍 検索メニュー")
+    q = st.sidebar.text_input("名前や言葉を入れてね")
 
-st.divider()
-st.caption("たくさん取れるようになったよ！")
+    # --- 3. 表示（データの形が違っても動くように調整） ---
+    for c in data:
+        # 本物データとバックアップデータの両方に対応する書き方
+        user = "不明"
+        if isinstance(c.get('author'), dict):
+            user = c['author'].get('username', '不明')
+        else:
+            user = c.get('user', '不明')
+            
+        content = c.get('content', '')
+
+        if q.lower() in user.lower() or q.lower() in content.lower():
+            with st.container():
+                st.markdown(f"👤 **{user}**")
+                st.info(content)
+                st.divider()
