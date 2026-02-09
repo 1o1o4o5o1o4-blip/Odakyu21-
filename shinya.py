@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-# 1. データの読み込み（ここを本物の過疎スタAPIに変えたよ！）
+# 1. データの読み込み
 @st.cache_data(ttl=60) # 60秒ごとに最新をチェックするようにしたよ
 def load_data():
     # 本物の過疎スタ（スタジオID: 51326987）のコメントを取得する住所
