@@ -1,69 +1,65 @@
 import streamlit as st
 import requests
+import time
 
-# ページの設定
-st.set_page_config(page_title="過疎スタ・サーチ", page_icon="🔍")
-st.title("🔍 過疎スタ・ベスト検索")
+st.set_page_config(page_title="過疎スタ 1000件データベース", layout="wide")
+st.title("📂 過疎スタ 1000件データベース")
 
-# 1. データの読み込み（一番成功率が高い順に試す！）
-@st.cache_data(ttl=60)
-def load_kasosuta():
-    # A案: 本物のScratch API
-    api_url = "https://api.scratch.mit.edu/studios/51326987/comments?limit=40"
-    # B案: 君が教えてくれたGitHubのバックアップデータ
-    backup_url = "https://raw.githubusercontent.com/hd3a/kasosuta-dataset/refs/heads/main/scratch_shinya_all.json"
+# 1. 1000件取得する関数
+@st.cache_data(ttl=600)
+def load_1000_comments():
+    all_data = []
+    # 40件 × 25回 = 1000件
+    max_pages = 25
     
     headers = {"User-Agent": "Mozilla/5.0"}
+    
+    bar = st.progress(0)
+    status = st.empty()
 
-    # まず本物を試す
-    try:
-        res = requests.get(api_url, headers=headers, timeout=5)
-        if res.status_code == 200:
-            return res.json(), "最新（Scratch直結）"
-    except:
-        pass
-
-    # ダメならバックアップを試す
-    try:
-        res = requests.get(backup_url, timeout=5)
-        if res.status_code == 200:
-            return res.json(), "保存データ（GitHub経由）"
-    except:
-        pass
-
-    return None, None
+    for i in range(max_pages):
+        offset = i * 40
+        url = f"https://api.scratch.mit.edu/studios/51326987/comments?offset={offset}&limit=40"
+        
+        try:
+            status.text(f"📥 データを読み込み中... ({len(all_data)}件)")
+            r = requests.get(url, headers=headers, timeout=10)
+            if r.status_code != 200:
+                break
+            
+            res_data = r.json()
+            if not res_data:
+                break
+                
+            all_data.extend(res_data)
+            bar.progress((i + 1) / max_pages)
+            time.sleep(0.1) # パンク防止
+        except:
+            break
+            
+    status.empty()
+    bar.empty()
+    return all_data
 
 # 2. 実行
-data, mode = load_kasosuta()
+with st.spinner("過疎スタの深層へ潜入中..."):
+    comments = load_1000_comments()
 
-if data is None:
-    st.error("😫 どうしてもデータが取れませんでした。")
-    st.info("requirements.txt に『requests』と書いて保存してあるか確認してね！")
+if not comments:
+    st.error("データが取れませんでした。requirements.txtがあるか確認してね。")
 else:
-    st.success(f"✅ {mode} モードで作動中！")
-    
-    # 検索機能
-    query = st.text_input("👤 ユーザー名や 💬 言葉で検索してね")
+    st.success(f"✅ {len(comments)}件の読み込み完了！")
 
-    # 3. 表示（どんなデータの形でも対応する魔法）
-    count = 0
-    for c in data:
-        # ユーザー名を探す
-        user = "不明"
-        if isinstance(c.get('author'), dict):
-            user = c['author'].get('username', '不明')
-        else:
-            user = c.get('user', '不明')
-        
-        # 内容を探す
+    # 3. 検索機能
+    q = st.text_input("🔍 ユーザー名やキーワードで検索")
+
+    # 4. 表示
+    for c in comments:
+        user = c.get('author', {}).get('username', '不明')
         content = c.get('content', '')
+        timestamp = c.get('datetime_created', '')
 
-        # 検索にヒットするかチェック
-        if query.lower() in user.lower() or query.lower() in content.lower():
-            count += 1
+        if q.lower() in user.lower() or q.lower() in content.lower():
             with st.chat_message("user"):
-                st.write(f"**{user}**")
+                st.write(f"**{user}** ({timestamp})")
                 st.write(content)
-
-    if count == 0:
-        st.warning("見つかりませんでした。")
