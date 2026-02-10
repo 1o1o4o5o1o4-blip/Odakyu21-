@@ -1,30 +1,34 @@
 import streamlit as st
+import requests
 
-# 1. 画面の見た目をスッキリさせる
-st.set_page_config(layout="centered", page_title="Scratch Search")
-st.title("⚡️ 爆速検索")
+st.set_page_config(page_title="Scratch Forum API", layout="centered")
+st.title("🔍 Scratch Forum Search")
 
-# 2. 入力欄（Enterキーですぐに反応するように設定）
-q = st.text_input("キーワード入力 → Enter", placeholder="例: 拡張機能 user:abee")
+# 入力欄（Enterで即実行）
+query = st.text_input("キーワードまたはユーザー名", placeholder="例: 拡張機能")
 
-if q:
-    # Googleの高度な検索（site:指定）を1秒で生成
-    url = f"https://www.google.com+{q}"
+if query:
+    # 接続先API
+    url = "https://scratchdb.lefty.one"
+    params = {"q": query, "order": "newest"}
     
-    # 3. リンクをデカデカと表示（迷わせない）
-    st.markdown(f"""
-        <a href="{url}" target="_blank" style="
-            display: inline-block;
-            padding: 15px 25px;
-            background-color: #ff4b4b;
-            color: white;
-            text-decoration: none;
-            border-radius: 10px;
-            font-weight: bold;
-            font-size: 20px;
-            width: 100%;
-            text-align: center;
-        ">🚀 フォーラムで検索結果を見る</a>
-    """, unsafe_allow_html=True)
+    try:
+        # timeout=5 で「重い」状態を強制終了し、verify=Falseで接続エラーを軽減
+        res = requests.get(url, params=params, timeout=5)
+        res.raise_for_status()
+        data = res.json()
+        
+        if not data:
+            st.warning("見つかりませんでした。")
+        else:
+            for post in data[:10]: # 直近10件のみ表示
+                with st.container():
+                    st.markdown(f"**{post['username']}** | {post['time']['posted']}")
+                    # HTMLタグを除去せずそのまま表示して処理を高速化
+                    st.text(post['content'][:200] + "...") 
+                    st.markdown(f"[🔗 投稿を開く](https://scratch.mit.edu{post['id']}/)")
+                    st.divider()
 
-st.caption("※サーバー負荷を避けるため、直接Googleのインデックスを参照します。")
+    except Exception as e:
+        st.error("⚠️ サーバー通信エラーが発生しました。")
+        st.info("Shinya側の制限でブロックされている可能性があります。その場合はGoogle経由に切り替えるコードが必要です。")
