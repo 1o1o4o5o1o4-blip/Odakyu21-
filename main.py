@@ -1,18 +1,30 @@
 import streamlit as st
-import urllib.parse
 
-st.title("Scratchフォーラム検索（Google経由）")
+# 1. 画面の見た目をスッキリさせる
+st.set_page_config(layout="centered", page_title="Scratch Search")
+st.title("⚡️ 爆速検索")
 
-query = st.text_input("検索キーワード", value="拡張機能")
-username = st.text_input("ユーザー名（任意）")
+# 2. 入力欄（Enterキーですぐに反応するように設定）
+q = st.text_input("キーワード入力 → Enter", placeholder="例: 拡張機能 user:abee")
 
-if st.button("検索実行"):
-    # Googleで「site:scratch.mit.edu/discuss」を指定して検索するURLを作成
-    search_terms = f"site:scratch.mit.edu/discuss {query} {username}".strip()
-    encoded_query = urllib.parse.quote(search_terms)
-    google_url = f"https://www.google.com{encoded_query}"
+if q:
+    # Googleの高度な検索（site:指定）を1秒で生成
+    url = f"https://www.google.com+{q}"
     
-    st.success("接続エラーを回避するため、Google検索リンクを生成しました。")
-    st.markdown(f"### [👉 ここをクリックして検索結果を表示]({google_url})")
-    
-    st.info("※サーバーの制限により直接データを取得できないため、ブラウザで公式フォーラムを直接検索します。")
+    # 3. リンクをデカデカと表示（迷わせない）
+    st.markdown(f"""
+        <a href="{url}" target="_blank" style="
+            display: inline-block;
+            padding: 15px 25px;
+            background-color: #ff4b4b;
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 20px;
+            width: 100%;
+            text-align: center;
+        ">🚀 フォーラムで検索結果を見る</a>
+    """, unsafe_allow_html=True)
+
+st.caption("※サーバー負荷を避けるため、直接Googleのインデックスを参照します。")
