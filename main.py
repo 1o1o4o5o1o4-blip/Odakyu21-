@@ -1,41 +1,45 @@
-import urllib.parse
-from IPython.display import display, HTML
-
-# --- 設定 ---
-query = "拡張機能" # 検索したいキーワード
-username = ""     # 特定のユーザーで絞り込むなら入力（例: "abee"）
-# -----------
-
-def generate_scratch_search(q, u):
-    # Googleに「Scratchフォーラム内だけを検索」と命令する特殊コマンド
-    # site: はドメイン指定、inurl: はURLに特定の文字を含むものに限定
-    base_query = f"site:scratch.mit.edu/discuss {q}"
-    if u:
-        base_query += f' "{u}"' # ユーザー名を引用符で囲んで精度アップ
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Scratch Forum 爆速検索ツール</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; padding: 50px; background: #f0f2f5; }
+        .card { background: white; padding: 30px; border-radius: 15px; shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 500px; border-top: 8px solid #855cd6; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #855cd6; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 1.1em; }
+        button:hover { background: #6b46b8; }
+        .info { font-size: 0.85em; color: #666; margin-top: 15px; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2 style="color: #855cd6; margin-top:0;">🚀 Scratch Forum Search</h2>
+        <p>GitHub上で動く「規制回避型」検索ツールです。</p>
         
-    encoded_query = urllib.parse.quote(base_query)
-    search_url = f"https://www.google.com{encoded_query}"
-    
-    html = f'''
-    <div style="font-family: sans-serif; padding: 20px; border: 2px solid #855cd6; border-radius: 10px; background-color: #f9f7ff;">
-        <h2 style="color: #855cd6; margin-top: 0;">🚀 Scratchフォーラム 確実検索</h2>
-        <p>キーワード: <b>{q}</b> {f' | ユーザー: <b>{u}</b>' if u else ''}</p>
-        <p style="font-size: 0.9em; color: #666;">
-            ※APIやスクレイピングがブロックされる環境でも、このリンクなら公式の最新データを安全に表示できます。
-        </p>
-        <a href="{search_url}" target="_blank" style="
-            display: inline-block;
-            background-color: #855cd6;
-            color: white;
-            padding: 12px 24px;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-            box-shadow: 0 4px #5c3fa1;
-        ">👉 検索結果を今すぐ表示する</a>
-    </div>
-    '''
-    display(HTML(html))
+        <input type="text" id="q" placeholder="キーワード (例: 拡張機能)">
+        <input type="text" id="u" placeholder="ユーザ名 (任意)">
+        
+        <button onclick="search()">フォーラムを検索する</button>
 
-# 実行
-generate_scratch_search(query, username)
+        <div class="info">
+            <b>仕組み:</b> このツールはPythonサーバーを通さず、ブラウザから直接Googleのインデックスを叩くため、<b>通信規制(Error 113等)が絶対に起きません。</b>
+        </div>
+    </div>
+
+    <script>
+        function search() {
+            const q = document.getElementById('q').value;
+            const u = document.getElementById('u').value;
+            if(!q && !u) return alert("キーワードかユーザ名を入れてください");
+
+            // site検索コマンドを作成
+            let query = `site:scratch.mit.edu/discuss ${q}`;
+            if(u) query += ` "${u}"`;
+
+            // Google検索へジャンプ
+            window.open(`https://www.google.com{encodeURIComponent(query)}`, '_blank');
+        }
+    </script>
+</body>
+</html>
