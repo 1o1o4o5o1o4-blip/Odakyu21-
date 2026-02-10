@@ -1,0 +1,12 @@
+import urllib.parse
+
+# main.py
+q = input("検索ワード: ")
+u = input("ユーザ名(任意): ")
+
+query = f"site:scratch.mit.edu/discuss {q} {u}".strip()
+url = f"https://www.google.com{urllib.parse.quote(query)}"
+
+print("\n--- 検索準備完了 ---")
+print(f"以下のURLをブラウザで開いてください（規制回避済み）:")
+print(url)
