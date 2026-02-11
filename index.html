@@ -1,31 +1,84 @@
-import { createClient } from '@supabase/supabase-js';
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scratchers Ultimate SNS</title>
+    <script src="https://cdn.jsdelivr.net"></script>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 500px; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 5px solid #855cd6; }
+        h2 { color: #855cd6; margin: 0 0 15; }
+        input, textarea { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #855cd6; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #6b46b8; }
+        .post { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 5px solid #855cd6; }
+        .post b { color: #855cd6; }
+        .nav { display: flex; justify-content: space-around; margin-bottom: 20px; width: 100%; }
+        .nav-btn { background: #ddd; padding: 5px 15px; border-radius: 20px; cursor: pointer; font-size: 0.8em; }
+    </style>
+</head>
+<body>
 
-const supabase = createClient('URL', 'KEY');
+<div class="container">
+    <div class="card">
+        <h2>🚀 Scratchers SNS</h2>
+        <div class="nav">
+            <span class="nav-btn" onclick="alert('フォロー機能: データベース連携中')">👥 フォロー</span>
+            <span class="nav-btn" onclick="alert('DM機能: 準備中')">✉️ DM</span>
+        </div>
+        <input type="text" id="user" placeholder="Scratchユーザ名">
+        <textarea id="text" placeholder="今なにしてる？"></textarea>
+        <input type="text" id="img_url" placeholder="画像のURL (任意)">
+        <button onclick="sendPost()">投稿する</button>
+    </div>
 
-// 1. 画像付きで投稿する
-async function uploadPost(userId, content, file) {
-  let imageUrl = null;
-  if (file) {
-    // Supabase Storageに画像を保存
-    const { data } = await supabase.storage.from('images').upload(`${Date.now()}.png`, file);
-    imageUrl = data.path;
-  }
-  await supabase.from('posts').insert([{ user_id: userId, content, image_url: imageUrl }]);
-}
+    <div id="feed">読み込み中...</div>
+</div>
 
-// 2. フォロー機能
-async function followUser(myId, targetId) {
-  await supabase.from('follows').insert([{ follower_id: myId, following_id: targetId }]);
-}
+<script>
+    // --- ⚠️ ここを自分のSupabaseの情報に書き換える ⚠️ ---
+    const SB_URL = "あなたのプロジェクトURL";
+    const SB_KEY = "あなたのAPIキー(anon public)";
+    const supabase = Object.assign(window['supabase']).createClient(SB_URL, SB_KEY);
 
-// 3. DM（ダイレクトメッセージ）の送信
-async function sendDM(fromId, toId, text) {
-  await supabase.from('messages').insert([{ sender_id: fromId, receiver_id: toId, text }]);
-}
+    // 1. 投稿を読み込む (自動更新)
+    async function fetchPosts() {
+        const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+        if (error) { console.error(error); return; }
+        
+        const feed = document.getElementById('feed');
+        feed.innerHTML = data.map(p => `
+            <div class="post">
+                <b>@${p.username}</b> <small style="color:#aaa;">${new Date(p.created_at).toLocaleString()}</small><br>
+                <p>${p.content}</p>
+                ${p.image_url ? `<img src="${p.image_url}" style="width:100%; border-radius:8px; margin-top:10px;">` : ''}
+            </div>
+        `).join('');
+    }
 
-// 4. フォローしている人だけのタイムライン取得
-async function getTimeline(myId) {
-  const { data: following } = await supabase.from('follows').select('following_id').eq('follower_id', myId);
-  const ids = following.map(f => f.following_id);
-  return await supabase.from('posts').select('*').in('user_id', ids);
-}
+    // 2. 投稿を送信する
+    async function sendPost() {
+        const u = document.getElementById('user').value;
+        const t = document.getElementById('text').value;
+        const i = document.getElementById('img_url').value;
+        
+        if(!u || !t) { alert("ユーザ名と本文を入れてね！"); return; }
+
+        const { error } = await supabase.from('posts').insert([{ username: u, content: t, image_url: i }]);
+        if (error) { alert("送信エラー！設定を確認してね"); }
+        else {
+            document.getElementById('text').value = "";
+            document.getElementById('img_url').value = "";
+            fetchPosts();
+        }
+    }
+
+    // 初期読み込みと5秒ごとの更新
+    fetchPosts();
+    setInterval(fetchPosts, 5000);
+</script>
+
+</body>
+</html>
