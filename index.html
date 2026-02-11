@@ -1,0 +1,31 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient('URL', 'KEY');
+
+// 1. 画像付きで投稿する
+async function uploadPost(userId, content, file) {
+  let imageUrl = null;
+  if (file) {
+    // Supabase Storageに画像を保存
+    const { data } = await supabase.storage.from('images').upload(`${Date.now()}.png`, file);
+    imageUrl = data.path;
+  }
+  await supabase.from('posts').insert([{ user_id: userId, content, image_url: imageUrl }]);
+}
+
+// 2. フォロー機能
+async function followUser(myId, targetId) {
+  await supabase.from('follows').insert([{ follower_id: myId, following_id: targetId }]);
+}
+
+// 3. DM（ダイレクトメッセージ）の送信
+async function sendDM(fromId, toId, text) {
+  await supabase.from('messages').insert([{ sender_id: fromId, receiver_id: toId, text }]);
+}
+
+// 4. フォローしている人だけのタイムライン取得
+async function getTimeline(myId) {
+  const { data: following } = await supabase.from('follows').select('following_id').eq('follower_id', myId);
+  const ids = following.map(f => f.following_id);
+  return await supabase.from('posts').select('*').in('user_id', ids);
+}
